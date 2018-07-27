@@ -363,6 +363,48 @@ App({
             phoneNumber: num
         })
     },
+		// 新的微信授权
+  HZWxAuthV2(scope, suc, fail) {
+    wx.getSetting({
+      success: (res) => {
+        if (res.authSetting[scope] === undefined) {
+          wx.authorize({
+            scope: scope,
+            success() {
+              if (typeof suc === 'function') {
+                suc();
+              }
+            },
+            fail: function () {
+              if (typeof fail === 'function') {
+                fail();
+              }
+            }
+          })
+        } else {
+          if (res.authSetting[scope] === true) {
+            if (typeof suc === 'function') {
+              suc();
+            }
+          } else {
+            wx.openSetting({
+              success(res) {
+                if (res.authSetting[scope] === true) {
+                  if (typeof suc === 'function') {
+                    suc();
+                  }
+                } else {
+                  if (typeof fail === 'function') {
+                    fail();
+                  }
+                }
+              }
+            })
+          }
+        }
+      }
+    })
+  },
     // 范围内随机取值
     HZArrRangeValue(bigNum, smallNum) {
         return Math.floor(Math.random() * (bigNum - smallNum + 1) + smallNum)
