@@ -462,5 +462,12 @@ App({
 			rgb.push(color)
 		}
 		return '#' + rgb.join('')
-	}
+	},
+	// 兼容ios  获取时间戳
+  getTs(time) {
+    let arr = time.split(/[- :]/),
+    _date = new Date(arr[0], arr[1] - 1, arr[2], arr[3], arr[4], arr[5]),
+    timeStr = Date.parse(_date)
+    return timeStr
+  }
 })
