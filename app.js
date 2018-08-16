@@ -469,5 +469,15 @@ App({
     _date = new Date(arr[0], arr[1] - 1, arr[2], arr[3], arr[4], arr[5]),
     timeStr = Date.parse(_date)
     return timeStr
+  },
+	// 不重复随机
+  HZArrRandomNoRepeat(curIndex, indexArr, callback) {
+    let that = this
+    let num = that.HZArrRandom(indexArr)
+    if (num !== curIndex) {
+      callback(num)
+    } else {
+      that.HZArrRandomNoRepeat(curIndex, indexArr, callback)
+    }
   }
 })
