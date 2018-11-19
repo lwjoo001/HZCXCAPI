@@ -6,7 +6,7 @@ App({
 	globalData: {
 		userInfo: null
 	},
-	// es6微信请求
+	// es6微信请求 注意是否需要version  可进入项目具体添加
 	HZWxRequest(xurl, sk, method, needSK, data = {}) {
 		let that = this
 		let token = that.jsonSortEnc(data)
@@ -14,18 +14,12 @@ App({
 			title: '加载中',
 			mask: true
 		})
-		let headerObj = {}
-		if (needSK === true) {
-			headerObj = {
-				'content-type': 'application/x-www-form-urlencoded;application/json',
-				'token': token,
-				'session-key': sk
-			}
-		} else {
-			headerObj = {
+		let headerObj = {
 				'content-type': 'application/x-www-form-urlencoded;application/json',
 				'token': token
 			}
+		if (needSK === true) {
+			headerObj['session-key'] = sk
 		}
 		return new Promise(function(resolve, reject) {
 			wx.request({
@@ -127,12 +121,14 @@ App({
 			}
 		})
 	},
-	// 获取小程序码接口B path = 'pages/details/details' todo key设置成默认
-	HZGetCodeB(id, path, sk, method, needSK, key = ) {
+	// 获取小程序码接口 a、b接口通用 path = 'pages/details/details' todo key设置成默认
+	// scene: 'xxx=xxx'
+	// 获取scene时 需要 decodeURIComponent(options.scene)
+	HZGetCode(scene, path, sk, method, needSK, key = ) {
 		let that = this
 		return new Promise((resolve, reject) => {
 			let data = {
-				scene: 'id=' + id,
+				scene: scene,
 				page_path: path,
 				width: '258',
 				auto_color: '0',
@@ -145,7 +141,7 @@ App({
 						resolve(currentPath)
 					})
 				} else if (r.errcode === 2) {
-					that.HZGetNewSK(key).then((sk) => {
+					that.HZGetNewSK(key).then((SK) => {
 						that.HZGetCodeB(id, path, RequestUrl, SK, method, needSK, key)
 					})
 				} else {
@@ -160,7 +156,6 @@ App({
 				reject(data)
 			})
 		})
-
 	},
 	// 下载文件 参数：文件路径
 	HZDownFile(xurl) {
@@ -444,7 +439,7 @@ App({
 			wx.login({
 				success: function(r) {
 					if (r.code) {
-						info.code = res.code;
+						info.code = r.code;
 						that.HZWxRequest(that.globalData.getSessionKeyUrl, '', 'GET', false, info).then((res) => {
 							let curSk = res.data;
 							msg.session_key = curSk
@@ -623,7 +618,7 @@ App({
 			wx.login({
 				success: function(r) {
 					if (r.code) {
-						info.code = res.code;
+						info.code = r.code;
 						that.HZWxRequest(that.globalData.getSessionKeyUrl, '', 'GET', false, info).then((res) => {
 							let curSk = res.data
 							resolve(curSk)
