@@ -6,25 +6,36 @@ App({
 	globalData: {
 		userInfo: null
 	},
-	// es6微信请求 注意是否需要version  可进入项目具体添加
-	HZWxRequest(xurl, sk, method, needSK, data = {}) {
-		let that = this
-		let token = that.jsonSortEnc(data)
+	// es6微信请求
+	HZWxRequest(xurl, sk, method, needSK, data) {
+		let that = this,
+			token_time = parseInt(new Date().getTime() / 1000),
+			token = null,
+			temporaryObj = {},
+			requestData = null
+		temporaryObj.token_time = token_time
+		if (that.HZGetKeysNumber(data) === 0) {
+			requestData = temporaryObj
+		} else {
+			requestData = Object.assign(data, temporaryObj)
+		}
+		token = that.jsonSortEnc(requestData)
 		wx.showLoading({
 			title: '加载中',
 			mask: true
 		})
 		let headerObj = {
-				'content-type': 'application/x-www-form-urlencoded;application/json',
-				'token': token
-			}
+			'content-type': 'application/x-www-form-urlencoded;application/json',
+			'token': token,
+			'version': version
+		}
 		if (needSK === true) {
 			headerObj['session-key'] = sk
 		}
 		return new Promise(function(resolve, reject) {
 			wx.request({
 				url: xurl,
-				data: data,
+				data: requestData,
 				method: method,
 				header: headerObj,
 				success: function(res) {
@@ -96,7 +107,7 @@ App({
 			return str
 		}
 	},
-	
+
 	// canvas画布保存到相册
 	HZCanvasToPhoto(canvasWidth, canvasHeight, winPro, canvasId) {
 		wx.canvasToTempFilePath({
@@ -137,7 +148,7 @@ App({
 			that.HZWxRequest(that.globalData.getCodeBUrl, sk, method, needSK, data).then((data) => {
 				if (data.errcode === 0) {
 					let qr_url = app.globalData.filePath + res.data.data;
-					that.HZDownFile(qr_url).then((currentPath)=>{
+					that.HZDownFile(qr_url).then((currentPath) => {
 						resolve(currentPath)
 					})
 				} else if (r.errcode === 2) {
@@ -159,15 +170,15 @@ App({
 	},
 	// 下载文件 参数：文件路径
 	HZDownFile(xurl) {
-		return new Promise((resolve, reject)=>{
+		return new Promise((resolve, reject) => {
 			wx.downloadFile({
 				url: xurl,
-				success (res) {
+				success(res) {
 					if (res.statusCode === 200) {
 						resolve(res.tempFilePath)
 					}
 				},
-				fail (res) {
+				fail(res) {
 					reject(res)
 				}
 			})
@@ -180,10 +191,10 @@ App({
 				count: nums,
 				sizeType: ['original', 'compressed'],
 				sourceType: ['album', 'camera'],
-				success (res) {
+				success(res) {
 					resolve(res.tempFilePaths)
 				},
-				fail (res) {
+				fail(res) {
 					reject(res)
 				}
 			})
@@ -319,7 +330,7 @@ App({
 			//随机索引值randomIndex是从0-arr.length中随机抽取的
 			let randomIndex = Math.floor(Math.random() * (i + 1));
 			//下面三句相当于把从数组中随机抽取到的值与当前遍历的值互换位置
-			var itemIndex = arr[randomIndex];
+			let itemIndex = arr[randomIndex];
 			arr[randomIndex] = arr[i];
 			arr[i] = itemIndex;
 		}
@@ -400,326 +411,343 @@ App({
 		})
 	},
 	// 获取对象key的个数
-	HZGetKeysNumber(options) {
-		let optionsKeys = 0
-		for (let optionsKey in options) {
-			optionsKeys++
+	let optionsKeys = 0
+	for (let optionsKey in options) {
+		optionsKeys++
+	}
+	return optionsKeys
+},
+// 获取storage中的session_key 同步 storageStr设置成默认 todo
+HZGetStorageSync(storageStr = ) {
+	let storageData = wx.getStorageSync(storageStr)
+	return storageData
+},
+// session_key过期通过storage中的data通过wx.login获取sk 同步 todo storageKey设置成默认
+HZGetNewSKSync(storageKey = ) {
+	let that = this
+	let info = that.HZGetStorageSync(storageKey)
+	return new Promise(function(resolve, reject) {
+		that.HZGetSKSync(info, storageKey).then((sk) => {
+			resolve(sk)
+		}, (r) => {
+			reject(r)
+		})
+	})
+},
+// aniu获取session_key 同步 todo  storageKey 可以弄成默认
+HZGetSKSync(msg, storageKey = ) {
+	let that = this;
+	return new Promise(function(resolve, reject) {
+		let info = {
+			'nick_name': msg.nickName,
+			'gender': msg.gender,
+			'city': msg.city,
+			'province': msg.province,
+			'country': msg.country,
+			'avatar_url': msg.avatarUrl
 		}
-		return optionsKeys
-	},
-	// 获取storage中的session_key 同步 storageStr设置成默认 todo
-	HZGetStorageSync(storageStr = ) {
-		let storageData = wx.getStorageSync(storageStr)
-		return storageData
-	},
-	// session_key过期通过storage中的data通过wx.login获取sk 同步 todo storageKey设置成默认
-	HZGetNewSKSync(storageKey = ) {
-		let that = this
-		let info = that.HZGetStorageSync(storageKey)
-		return new Promise(function(resolve, reject) {
-			that.HZGetSKSync(info, storageKey).then((sk) => {
-				resolve(sk)
-			},(r)=>{
-				reject(r)
-			})
-		})
-	},
-	// aniu获取session_key 同步 todo  storageKey 可以弄成默认
-	HZGetSKSync(msg, storageKey = ) {
-		let that = this;
-		return new Promise(function(resolve, reject) {
-			let info = {
-				'nick_name': msg.nickName,
-				'gender': msg.gender,
-				'city': msg.city,
-				'province': msg.province,
-				'country': msg.country,
-				'avatar_url': msg.avatarUrl
-			}
-			wx.login({
-				success: function(r) {
-					if (r.code) {
-						info.code = r.code;
-						that.HZWxRequest(that.globalData.getSessionKeyUrl, '', 'GET', false, info).then((res) => {
-							let curSk = res.data;
-							msg.session_key = curSk
-							wx.setStorageSync(storageKey, msg)
-							resolve(curSk)
-						}, (res) => {
-							wx.showModal({
-								title: '温馨提示',
-								content: data.errmsg,
-								showCancel: false
-							})
-							reject(res)
+		wx.login({
+			success: function(r) {
+				if (r.code) {
+					info.code = r.code;
+					that.HZWxRequest(that.globalData.getSessionKeyUrl, '', 'GET', false, info).then((res) => {
+						let curSk = res.data;
+						msg.session_key = curSk
+						wx.setStorageSync(storageKey, msg)
+						resolve(curSk)
+					}, (res) => {
+						wx.showModal({
+							title: '温馨提示',
+							content: data.errmsg,
+							showCancel: false
 						})
-					} else {
-						console.log('登录失败！' + res.errMsg)
-						reject(r)
-					}
-				}
-			})
-		})
-	},
-	// 上传照片,参数需要上传的文件 syncStorageKey设置成默认 todo  同步 showloading要加上
-	HZUploadFileSync(sk, theFilePath, syncStorageKey = ) {
-		let that = this
-		return new Promise((resolve, reject) => {
-			wx.uploadFile({
-				// todo 上传路径
-				url: that.globalData.upLoadFileUrl,
-				filePath: theFilePath,
-				name: 'file',
-				header: {
-					'content-type': 'application/x-www-form-urlencoded;application/json',
-					'session-key': sk
-				},
-				success (res) {
-					var data = res.data;
-					let obj = JSON.parse(data)
-					if (obj.errcode === 0) {
-						// let path = app.globalData.filePath + obj.data.img_name
-						resolve(obj.data.img_name)
-					} else if (obj.errcode === 2) {
-						that.HZGetNewSKSync(syncStorageKey).then((SK)=>{
-							HZUploadFileSync(SK, theFilePath, syncStorageKey)
-						})
-					} else {
 						reject(res)
-						wx.showToast({
-							title: obj.errmsg,
-							icon: 'none',
-							duration: 2000
-						})
-					}
-				},
-				fail (res) {
-					reject(res)
-				},
-				complete () {
-					wx.hideLoading();
-				}
-			})
-		})
-	},
-	// 保存图片 todo storageStr设置成默认 同步
-	HZSaveImgSync(canvasIsOver, width, height, winPro, id, storageStr = ) {
-		let that = this
-		if (canvasIsOver) {
-			let data = that.HZGetStorageSync(storageStr)
-			if (!data.photo) {
-				that.HZWxAuth('scope.writePhotosAlbum').then(() => {
-					that.HZCanvasToPhoto(width, height, winPro, id)
-					data.photo = true
-					wx.setStorageSync(storageStr, data)
-				}, () => {
-					wx.setStorageSync(storageStr, data)
-				})
-			} else {
-				that.HZCanvasToPhoto(width, height, winPro, id)
-			}
-		} else {
-			wx.showModal({
-				title: '温馨提示',
-				content: '照片生成中，请稍后再点击',
-				showCancel: false
-			})
-		}
-	},
-	// 保存图片 todo storageStr设置成默认
-	HZSaveImg(canvasIsOver, width, height, winPro, id, storageStr = ) {
-		let that = this
-		if (canvasIsOver) {
-			wx.getStorage({
-				key: storageStr,
-				success: function(res) {
-					let data = res.data
-					if (!data.photo) {
-						that.HZWxAuth('scope.writePhotosAlbum').then(() => {
-							that.HZCanvasToPhoto(width, height, winPro, id)
-							data.photo = true
-							wx.setStorage({
-								key: storageStr,
-								data: data
-							})
-						}, () => {
-							data.photo = false
-							wx.setStorage({
-								key: storageStr,
-								data: data
-							})
-						})
-					} else {
-						that.HZCanvasToPhoto(width, height, winPro, id)
-					}
-				},
-			})
-		} else {
-			wx.showModal({
-				title: '温馨提示',
-				content: '照片生成中，请稍后再点击',
-				showCancel: false
-			})
-		}
-	},
-	// 上传照片,参数需要上传的文件 storageKey设置成默认 todo wx.showloading记得加上去
-	HZUploadFile(sk, theFilePath, storageKey = ) {
-		let that = this
-		return new Promise((resolve, reject) => {
-			wx.uploadFile({
-				// todo 上传路径
-				url: that.globalData.upLoadFileUrl,
-				filePath: theFilePath,
-				name: 'file',
-				header: {
-					'content-type': 'application/x-www-form-urlencoded;application/json',
-					'session-key': sk
-				},
-				success (res) {
-					var data = res.data;
-					let obj = JSON.parse(data)
-					if (obj.errcode === 0) {
-						// let path = app.globalData.filePath + obj.data.img_name
-						resolve(obj.data.img_name)
-					} else if (obj.errcode === 2) {
-						that.HZGetNewSK(storageKey).then((SK)=>{
-							that.HZUploadFile(SK, theFilePath, storageKey)
-						})
-					} else {
-						reject(res)
-						wx.showToast({
-							title: obj.errmsg,
-							icon: 'none',
-							duration: 2000
-						})
-					}
-				},
-				fail (res) {
-					reject(res)
-				},
-				complete () {
-					wx.hideLoading();
-				}
-			})
-		})
-	},
-	// aniu获取session_key todo storageKey设置默认
-	HZGetSK (msg, storageKey = ) {
-		let that = this;
-		return new Promise((resolve, reject) => {
-			let info = {
-				'nick_name': msg.nickName,
-				'gender': msg.gender,
-				'city': msg.city,
-				'province': msg.province,
-				'country': msg.country,
-				'avatar_url': msg.avatarUrl
-			}
-			wx.login({
-				success: function(r) {
-					if (r.code) {
-						info.code = r.code;
-						that.HZWxRequest(that.globalData.getSessionKeyUrl, '', 'GET', false, info).then((res) => {
-							let curSk = res.data
-							resolve(curSk)
-							msg.session_key = curSk
-							wx.setStorage({
-								key: storageKey,
-								data: msg
-							})
-						}, (res) => {
-							reject(res)
-							wx.showModal({
-								title: '温馨提示',
-								content: res.errmsg,
-								showCancel: false
-							})
-						})
-					} else {
-						reject(r)
-					}
-				}
-			})
-		})
-	},
-	// session_key过期通过storage中的data通过wx.login获取sk
-	// storageKey设置成默认
-	HZGetNewSK(storageKey = ) {
-		let that = this
-		return new Promise((resolve, reject) => {
-			wx.getStorage({
-				key: storageKey,
-				success (res) {
-					let info = res.data
-					that.HZGetSK(info).then((sk) => {
-						resolve(sk)
-					},(r)=>{
-						reject(r)
 					})
-				},
-				fail (res) {
-					reject(res)
+				} else {
+					console.log('登录失败！' + res.errMsg)
+					reject(r)
 				}
-			})
+			}
 		})
-	},
-	// 获取storage中的session_key todo storageStr设置成默认
-	HZGetStorageSK(storageStr = ) {
-		return new Promise((resolve, reject) => {
-			wx.getStorage({
-				key: storageStr,
-				success (res) {
-					resolve(res.data.session_key)
-				},
-				fail (res) {
+	})
+},
+// 上传照片,参数需要上传的文件 syncStorageKey设置成默认 todo  同步 showloading要加上
+HZUploadFileSync(sk, theFilePath, syncStorageKey = ) {
+	let that = this
+	return new Promise((resolve, reject) => {
+		wx.uploadFile({
+			// todo 上传路径
+			url: that.globalData.upLoadFileUrl,
+			filePath: theFilePath,
+			name: 'file',
+			header: {
+				'content-type': 'application/x-www-form-urlencoded;application/json',
+				'session-key': sk
+			},
+			success(res) {
+				let data = res.data;
+				let obj = JSON.parse(data)
+				if (obj.errcode === 0) {
+					// let path = app.globalData.filePath + obj.data.img_name
+					resolve(obj.data.img_name)
+				} else if (obj.errcode === 2) {
+					that.HZGetNewSKSync(syncStorageKey).then((SK) => {
+						HZUploadFileSync(SK, theFilePath, syncStorageKey)
+					})
+				} else {
 					reject(res)
+					wx.showToast({
+						title: obj.errmsg,
+						icon: 'none',
+						duration: 2000
+					})
 				}
-			})
+			},
+			fail(res) {
+				reject(res)
+			},
+			complete() {
+				wx.hideLoading();
+			}
 		})
-	},
-	// 授权 遗弃
-	//   HZWxAuth(scope, isOpen, suc, fail) {
-	//   	wx.getSetting({
-	//   		success(res) {
-	//   			if (!res.authSetting[scope]) {
-	//   				if (isOpen === false) {
-	//   					wx.authorize({
-	//   						scope: scope,
-	//   						success() {
-	//   							if (typeof suc === 'function') {
-	//   								suc();
-	//   							}
-	//   						},
-	//   						fail: function() {
-	//   							if (typeof fail === 'function') {
-	//   								fail();
-	//   							}
-	//   						}
-	//   					})
-	//   				} else {
-	//   					wx.openSetting({
-	//   						success(res) {
-	//   							if (res.authSetting[scope] === true) {
-	//   								if (typeof suc === 'function') {
-	//   									suc();
-	//   								}
-	//   							} else {
-	//   								if (typeof fail === 'function') {
-	//   									fail();
-	//   								}
-	//   							}
-	//   						}
-	//   					})
-	//   				}
-	//   			} else {
-	//   				if (typeof suc === 'function') {
-	//   					suc();
-	//   				}
-	//   			}
-	//   		},
-	//   		fail: function() {
-	//   			console.log(11)
-	//   		}
-	//   	})
-	//   }
+	})
+},
+// 保存图片 todo storageStr设置成默认 同步
+HZSaveImgSync(canvasIsOver, width, height, winPro, id, storageStr = ) {
+	let that = this
+	if (canvasIsOver) {
+		let data = that.HZGetStorageSync(storageStr)
+		if (!data.photo) {
+			that.HZWxAuth('scope.writePhotosAlbum').then(() => {
+				that.HZCanvasToPhoto(width, height, winPro, id)
+				data.photo = true
+				wx.setStorageSync(storageStr, data)
+			}, () => {
+				wx.setStorageSync(storageStr, data)
+			})
+		} else {
+			that.HZCanvasToPhoto(width, height, winPro, id)
+		}
+	} else {
+		wx.showModal({
+			title: '温馨提示',
+			content: '照片生成中，请稍后再点击',
+			showCancel: false
+		})
+	}
+},
+// 保存图片 todo storageStr设置成默认
+HZSaveImg(canvasIsOver, width, height, winPro, id, storageStr = ) {
+	let that = this
+	if (canvasIsOver) {
+		wx.getStorage({
+			key: storageStr,
+			success: function(res) {
+				let data = res.data
+				if (!data.photo) {
+					that.HZWxAuth('scope.writePhotosAlbum').then(() => {
+						that.HZCanvasToPhoto(width, height, winPro, id)
+						data.photo = true
+						wx.setStorage({
+							key: storageStr,
+							data: data
+						})
+					}, () => {
+						data.photo = false
+						wx.setStorage({
+							key: storageStr,
+							data: data
+						})
+					})
+				} else {
+					that.HZCanvasToPhoto(width, height, winPro, id)
+				}
+			},
+		})
+	} else {
+		wx.showModal({
+			title: '温馨提示',
+			content: '照片生成中，请稍后再点击',
+			showCancel: false
+		})
+	}
+},
+// 上传照片,参数需要上传的文件 storageKey设置成默认 todo wx.showloading记得加上去
+HZUploadFile(sk, theFilePath, storageKey = ) {
+	let that = this
+	return new Promise((resolve, reject) => {
+		wx.uploadFile({
+			// todo 上传路径
+			url: that.globalData.upLoadFileUrl,
+			filePath: theFilePath,
+			name: 'file',
+			header: {
+				'content-type': 'application/x-www-form-urlencoded;application/json',
+				'session-key': sk
+			},
+			success(res) {
+				let data = res.data;
+				let obj = JSON.parse(data)
+				if (obj.errcode === 0) {
+					// let path = app.globalData.filePath + obj.data.img_name
+					resolve(obj.data.img_name)
+				} else if (obj.errcode === 2) {
+					that.HZGetNewSK(storageKey).then((SK) => {
+						that.HZUploadFile(SK, theFilePath, storageKey)
+					})
+				} else {
+					reject(res)
+					wx.showToast({
+						title: obj.errmsg,
+						icon: 'none',
+						duration: 2000
+					})
+				}
+			},
+			fail(res) {
+				reject(res)
+			},
+			complete() {
+				wx.hideLoading();
+			}
+		})
+	})
+},
+// aniu获取session_key todo storageKey设置默认
+HZGetSK(msg, storageKey = ) {
+	let that = this;
+	return new Promise((resolve, reject) => {
+		let info = {
+			'nick_name': msg.nickName,
+			'gender': msg.gender,
+			'city': msg.city,
+			'province': msg.province,
+			'country': msg.country,
+			'avatar_url': msg.avatarUrl
+		}
+		wx.login({
+			success: function(r) {
+				if (r.code) {
+					info.code = r.code;
+					that.HZWxRequest(that.globalData.getSessionKeyUrl, '', 'GET', false, info).then((res) => {
+						let curSk = res.data
+						resolve(curSk)
+						msg.session_key = curSk
+						wx.setStorage({
+							key: storageKey,
+							data: msg
+						})
+					}, (res) => {
+						reject(res)
+						wx.showModal({
+							title: '温馨提示',
+							content: res.errmsg,
+							showCancel: false
+						})
+					})
+				} else {
+					reject(r)
+				}
+			}
+		})
+	})
+},
+// session_key过期通过storage中的data通过wx.login获取sk
+// storageKey设置成默认
+HZGetNewSK(storageKey = ) {
+	let that = this
+	return new Promise((resolve, reject) => {
+		wx.getStorage({
+			key: storageKey,
+			success(res) {
+				let info = res.data
+				that.HZGetSK(info).then((sk) => {
+					resolve(sk)
+				}, (r) => {
+					reject(r)
+				})
+			},
+			fail(res) {
+				reject(res)
+			}
+		})
+	})
+},
+// 获取storage中的session_key todo storageStr设置成默认
+HZGetStorageSK(storageStr = ) {
+	return new Promise((resolve, reject) => {
+		wx.getStorage({
+			key: storageStr,
+			success(res) {
+				resolve(res.data.session_key)
+			},
+			fail(res) {
+				reject(res)
+			}
+		})
+	})
+},
+// 获取多个随机数
+HZGetArrayItems(arr, num) {
+	let temp_array = new Array()
+	for (let index in arr) {
+		temp_array.push(arr[index])
+	}
+	let return_array = new Array()
+	for (let i = 0; i < num; i++) {
+		if (temp_array.length > 0) {
+			let arrIndex = Math.floor(Math.random() * temp_array.length)
+			return_array[i] = temp_array[arrIndex]
+			temp_array.splice(arrIndex, 1)
+		} else {
+			break
+		}
+	}
+	return return_array
+}
+// 授权 遗弃
+//   HZWxAuth(scope, isOpen, suc, fail) {
+//   	wx.getSetting({
+//   		success(res) {
+//   			if (!res.authSetting[scope]) {
+//   				if (isOpen === false) {
+//   					wx.authorize({
+//   						scope: scope,
+//   						success() {
+//   							if (typeof suc === 'function') {
+//   								suc();
+//   							}
+//   						},
+//   						fail: function() {
+//   							if (typeof fail === 'function') {
+//   								fail();
+//   							}
+//   						}
+//   					})
+//   				} else {
+//   					wx.openSetting({
+//   						success(res) {
+//   							if (res.authSetting[scope] === true) {
+//   								if (typeof suc === 'function') {
+//   									suc();
+//   								}
+//   							} else {
+//   								if (typeof fail === 'function') {
+//   									fail();
+//   								}
+//   							}
+//   						}
+//   					})
+//   				}
+//   			} else {
+//   				if (typeof suc === 'function') {
+//   					suc();
+//   				}
+//   			}
+//   		},
+//   		fail: function() {
+//   			console.log(11)
+//   		}
+//   	})
+//   }
 })
